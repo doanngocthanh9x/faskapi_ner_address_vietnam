@@ -109,8 +109,15 @@ def compute_metrics(eval_pred):
     }
 
 
-def train_model(model_name="vinai/phobert-base", num_labels=9):
-    """Train the NER model"""
+def train_model(model_name="vinai/phobert-base", num_labels=9, num_epochs=3):
+    """
+    Train the NER model
+    
+    Args:
+        model_name: Name or path of the pre-trained model
+        num_labels: Number of label classes
+        num_epochs: Number of training epochs (default: 3)
+    """
     logger.info(f"Training model: {model_name}")
     
     # Load tokenizer and model
@@ -124,6 +131,8 @@ def train_model(model_name="vinai/phobert-base", num_labels=9):
     dataset = prepare_dataset()
     
     # Tokenize dataset
+    # Note: We keep original columns as they might be needed for debugging
+    # In production, you could add remove_columns=['tokens', 'ner_tags'] to save memory
     tokenized_datasets = dataset.map(
         lambda x: tokenize_and_align_labels(x, tokenizer),
         batched=True
@@ -136,7 +145,7 @@ def train_model(model_name="vinai/phobert-base", num_labels=9):
         learning_rate=2e-5,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
-        num_train_epochs=3,
+        num_train_epochs=num_epochs,
         weight_decay=0.01,
         save_strategy="epoch",
         load_best_model_at_end=True,

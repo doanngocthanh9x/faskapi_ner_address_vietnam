@@ -119,13 +119,12 @@ class ONNXPredictor:
             if 'token_type_ids' in input_names and 'token_type_ids' in inputs:
                 ort_inputs['token_type_ids'] = inputs['token_type_ids'].astype(np.int64)
         else:
-            # Fallback: simple tokenization
-            words = text.split()
-            # Create dummy inputs (this is a placeholder)
-            ort_inputs = {
-                'input_ids': np.array([[i for i in range(len(words))]], dtype=np.int64),
-                'attention_mask': np.ones((1, len(words)), dtype=np.int64),
-            }
+            # Fallback: No tokenizer available - this is not ideal for production
+            logger.warning("No tokenizer available - predictions will be inaccurate")
+            raise RuntimeError(
+                "Tokenizer not available. Please install transformers and ensure "
+                "the tokenizer can be loaded from Hugging Face Hub or local path."
+            )
         
         # Run inference
         outputs = self.session.run(None, ort_inputs)
@@ -156,7 +155,11 @@ class ONNXPredictor:
         current_entity = None
         current_text = []
         
-        for i, pred_id in enumerate(predictions[:len(words)]):
+        # Ensure we don't go beyond the length of words
+        num_tokens = min(len(predictions), len(words))
+        
+        for i in range(num_tokens):
+            pred_id = predictions[i]
             label = self.id2label.get(int(pred_id), "O")
             
             if label.startswith("B-"):
@@ -170,11 +173,10 @@ class ONNXPredictor:
                     })
                 # Start new entity
                 current_entity = label[2:]
-                current_text = [words[i]] if i < len(words) else []
+                current_text = [words[i]]
             elif label.startswith("I-") and current_entity:
                 # Continue current entity
-                if i < len(words):
-                    current_text.append(words[i])
+                current_text.append(words[i])
             else:
                 # Save previous entity if exists
                 if current_entity:
@@ -192,8 +194,8 @@ class ONNXPredictor:
             entities.append({
                 "entity": current_entity,
                 "text": " ".join(current_text),
-                "start": len(predictions) - len(current_text),
-                "end": len(predictions)
+                "start": num_tokens - len(current_text),
+                "end": num_tokens
             })
         
         return entities
