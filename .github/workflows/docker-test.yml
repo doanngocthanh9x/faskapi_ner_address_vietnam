@@ -1,0 +1,73 @@
+name: Test Docker Image
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test-docker:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: ner-api:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run container
+        run: |
+          docker run -d \
+            --name ner-api-test \
+            -p 8000:8000 \
+            ner-api:test
+
+      - name: Wait for container to be ready
+        run: |
+          echo "Waiting for API to be ready..."
+          for i in {1..30}; do
+            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "API is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+      - name: Test health endpoint
+        run: |
+          curl -f http://localhost:8000/health || exit 1
+          echo "✅ Health check passed"
+
+      - name: Test root endpoint
+        run: |
+          curl -f http://localhost:8000/ || exit 1
+          echo "✅ Root endpoint passed"
+
+      - name: Show container logs
+        if: always()
+        run: |
+          echo "=== Container Logs ==="
+          docker logs ner-api-test
+
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker stop ner-api-test || true
+          docker rm ner-api-test || true
