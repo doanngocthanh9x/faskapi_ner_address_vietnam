@@ -1,0 +1,13 @@
+fix: Add auto model download with complete file verification
+
+- Add docker-entrypoint.sh to auto-download models on container start
+- Check for all required files: .onnx, .onnx.data, config.json
+- Update download_model.py to download entire folder from Google Drive
+- Fix Pydantic warning by setting protected_namespaces = ()
+- Increase health check start_period to 40s for model download
+- Add fix_models.sh script for manual model re-download
+- Add QUICKSTART.md with comprehensive deployment guide
+- Verify model files after download with size display
+
+This ensures the container can run standalone without manual model download,
+and all required ONNX Runtime files (.onnx.data) are present.

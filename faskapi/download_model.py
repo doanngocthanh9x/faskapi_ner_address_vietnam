@@ -62,46 +62,59 @@ def download_models():
     # Create model directory if it doesn't exist
     config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Download main model file
-    if not config.MODEL_FILE.exists():
-        print("Downloading main model file...")
-        try:
-            download_from_google_drive(
-                config.GOOGLE_DRIVE_FILE_ID,
-                str(config.MODEL_FILE)
-            )
-        except Exception as e:
-            print(f"Error downloading model file: {e}")
-            print("Trying alternative download method...")
-            # If direct download fails, try downloading as zip
-            zip_path = config.MODEL_DIR / "model.zip"
-            download_from_google_drive(
-                config.GOOGLE_DRIVE_FILE_ID,
-                str(zip_path)
-            )
-            if zip_path.exists():
-                extract_zip(str(zip_path), str(config.MODEL_DIR))
-                os.remove(zip_path)
-    else:
-        print(f"Model file already exists: {config.MODEL_FILE}")
+    # Check if critical files exist
+    model_onnx_exists = config.MODEL_FILE.exists()
+    model_data_exists = (config.MODEL_DIR / "ner_address_model_final.onnx.data").exists()
+    config_exists = (config.MODEL_DIR / "config.json").exists()
     
-    # Download tokenizer and other files from folder
-    if not config.TOKENIZER_DIR.exists():
-        print("Downloading tokenizer files...")
-        try:
-            download_folder_from_google_drive(
-                config.GOOGLE_DRIVE_FOLDER_ID,
-                str(config.MODEL_DIR)
-            )
-        except Exception as e:
-            print(f"Error downloading folder: {e}")
-            print("Please download manually from:")
-            print(f"https://drive.google.com/drive/folders/{config.GOOGLE_DRIVE_FOLDER_ID}")
-    else:
-        print(f"Tokenizer directory already exists: {config.TOKENIZER_DIR}")
+    if model_onnx_exists and model_data_exists and config_exists:
+        print("All model files already exist!")
+        print(f"  - {config.MODEL_FILE}")
+        print(f"  - {config.MODEL_DIR / 'ner_address_model_final.onnx.data'}")
+        print(f"  - {config.MODEL_DIR / 'config.json'}")
+        return
     
-    print("\nModel download completed!")
-    print(f"Model files location: {config.MODEL_DIR}")
+    print("Downloading model files from Google Drive folder...")
+    print("This may take 2-3 minutes (downloading ~1.5 GB)...")
+    
+    try:
+        # Download entire folder which contains all necessary files
+        download_folder_from_google_drive(
+            config.GOOGLE_DRIVE_FOLDER_ID,
+            str(config.MODEL_DIR)
+        )
+        
+        # Verify critical files
+        if not config.MODEL_FILE.exists():
+            print(f"⚠️  Warning: {config.MODEL_FILE} not found after download")
+        if not (config.MODEL_DIR / "ner_address_model_final.onnx.data").exists():
+            print(f"⚠️  Warning: ner_address_model_final.onnx.data not found after download")
+        if not (config.MODEL_DIR / "config.json").exists():
+            print(f"⚠️  Warning: config.json not found after download")
+            
+        print("\n✅ Model download completed!")
+        print(f"Model files location: {config.MODEL_DIR}")
+        
+        # List downloaded files
+        print("\nDownloaded files:")
+        for file in sorted(config.MODEL_DIR.glob("*")):
+            if file.is_file():
+                size_mb = file.stat().st_size / (1024 * 1024)
+                print(f"  - {file.name} ({size_mb:.2f} MB)")
+                
+    except Exception as e:
+        print(f"\n❌ Error downloading from Google Drive: {e}")
+        print("\n📥 Please download manually:")
+        print(f"1. Go to: https://drive.google.com/drive/folders/{config.GOOGLE_DRIVE_FOLDER_ID}")
+        print(f"2. Download all files to: {config.MODEL_DIR}")
+        print("\nRequired files:")
+        print("  - ner_address_model_final.onnx")
+        print("  - ner_address_model_final.onnx.data")
+        print("  - config.json")
+        print("  - tokenizer.json")
+        print("  - vocab.txt")
+        print("  - tokenizer_config.json")
+        print("  - special_tokens_map.json")
 
 
 if __name__ == "__main__":
