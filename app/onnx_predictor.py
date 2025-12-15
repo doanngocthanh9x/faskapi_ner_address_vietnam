@@ -55,13 +55,13 @@ class ONNXPredictor:
         tokenizer_name = tokenizer_name or TOKENIZER_NAME
         
         # Check if model exists
-        if not os.path.exists(model_path):
-            logger.warning(f"Model file not found at {model_path}")
+        if not os.path.exists(self.model_path):
+            logger.warning(f"Model file not found at {self.model_path}")
             logger.info("To use this API, you need to:")
             logger.info("1. Train a NER model")
             logger.info("2. Convert it to ONNX format")
             logger.info("3. Place it at models/model.onnx")
-            raise FileNotFoundError(f"Model file not found at {model_path}")
+            raise FileNotFoundError(f"Model file not found at {self.model_path}")
         
         # Initialize ONNX Runtime session
         self.session = ort.InferenceSession(
