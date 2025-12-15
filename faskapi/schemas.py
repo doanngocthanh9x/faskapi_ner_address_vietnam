@@ -50,6 +50,8 @@ class NERResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response"""
+    model_config = {"protected_namespaces": ()}
+    
     status: str
     model_loaded: bool
     message: str
