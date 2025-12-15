@@ -14,8 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/
-COPY models/ ./models/
+COPY config.py .
 COPY run.py .
+
+# Create models directory (will be populated via volume mount or separately)
+RUN mkdir -p ./models
 
 # Expose port
 EXPOSE 8000

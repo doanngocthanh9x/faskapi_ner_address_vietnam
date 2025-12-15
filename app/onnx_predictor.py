@@ -1,6 +1,24 @@
 from typing import List, Dict
 import os
 import logging
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import config
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+try:
+    from config import MODEL_PATH, TOKENIZER_NAME, MAX_SEQUENCE_LENGTH, LABEL_MAP, ONNX_PROVIDERS
+except ImportError:
+    # Fallback defaults if config is not available
+    MODEL_PATH = "models/model.onnx"
+    TOKENIZER_NAME = "vinai/phobert-base"
+    MAX_SEQUENCE_LENGTH = 256
+    LABEL_MAP = {
+        0: "O", 1: "B-CITY", 2: "I-CITY", 3: "B-DISTRICT",
+        4: "I-DISTRICT", 5: "B-WARD", 6: "I-WARD", 7: "B-STREET", 8: "I-STREET"
+    }
+    ONNX_PROVIDERS = ["CPUExecutionProvider"]
 
 try:
     import onnxruntime as ort
@@ -18,8 +36,7 @@ logger = logging.getLogger(__name__)
 class ONNXPredictor:
     """ONNX-based predictor for Vietnamese address NER"""
     
-    def __init__(self, model_path: str = "models/model.onnx", 
-                 tokenizer_name: str = "vinai/phobert-base"):
+    def __init__(self, model_path: str = None, tokenizer_name: str = None):
         """
         Initialize ONNX predictor
         
@@ -33,7 +50,9 @@ class ONNXPredictor:
                 "Install with: pip install onnxruntime numpy transformers"
             )
         
-        self.model_path = model_path
+        # Use config defaults if not provided
+        self.model_path = model_path or MODEL_PATH
+        tokenizer_name = tokenizer_name or TOKENIZER_NAME
         
         # Check if model exists
         if not os.path.exists(model_path):
@@ -46,8 +65,8 @@ class ONNXPredictor:
         
         # Initialize ONNX Runtime session
         self.session = ort.InferenceSession(
-            model_path,
-            providers=['CPUExecutionProvider']
+            self.model_path,
+            providers=ONNX_PROVIDERS
         )
         
         # Load tokenizer
@@ -58,20 +77,11 @@ class ONNXPredictor:
             logger.info("Using a fallback simple tokenizer")
             self.tokenizer = None
         
-        # Define label mapping (adjust based on your dataset)
-        self.id2label = {
-            0: "O",
-            1: "B-CITY",
-            2: "I-CITY",
-            3: "B-DISTRICT",
-            4: "I-DISTRICT",
-            5: "B-WARD",
-            6: "I-WARD",
-            7: "B-STREET",
-            8: "I-STREET",
-        }
+        # Use label mapping from config
+        self.id2label = LABEL_MAP
+        self.max_length = MAX_SEQUENCE_LENGTH
         
-        logger.info(f"ONNX model loaded from {model_path}")
+        logger.info(f"ONNX model loaded from {self.model_path}")
         logger.info(f"Model inputs: {[i.name for i in self.session.get_inputs()]}")
         logger.info(f"Model outputs: {[o.name for o in self.session.get_outputs()]}")
     
@@ -95,7 +105,7 @@ class ONNXPredictor:
                 return_tensors="np",
                 padding=True,
                 truncation=True,
-                max_length=256
+                max_length=self.max_length
             )
             
             # Prepare input for ONNX

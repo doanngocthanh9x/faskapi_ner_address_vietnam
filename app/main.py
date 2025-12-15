@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict
 import logging
+from contextlib import asynccontextmanager
 
 from app.onnx_predictor import ONNXPredictor
 
@@ -9,14 +10,34 @@ from app.onnx_predictor import ONNXPredictor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize predictor
+predictor = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events"""
+    global predictor
+    # Startup
+    try:
+        predictor = ONNXPredictor()
+        logger.info("ONNX model loaded successfully")
+    except Exception as e:
+        logger.error(f"Failed to load ONNX model: {e}")
+        logger.warning("Starting without model - endpoints will return errors")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down application")
+
+
 app = FastAPI(
     title="Vietnamese Address NER API",
     description="Named Entity Recognition for Vietnamese addresses using ONNX Runtime",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
-
-# Initialize predictor
-predictor = None
 
 
 class TextInput(BaseModel):
@@ -26,18 +47,6 @@ class TextInput(BaseModel):
 class NERResult(BaseModel):
     text: str
     entities: List[Dict[str, str]]
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the ONNX model on startup"""
-    global predictor
-    try:
-        predictor = ONNXPredictor()
-        logger.info("ONNX model loaded successfully")
-    except Exception as e:
-        logger.error(f"Failed to load ONNX model: {e}")
-        logger.warning("Starting without model - endpoints will return errors")
 
 
 @app.get("/")
