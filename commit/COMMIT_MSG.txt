@@ -1,0 +1,14 @@
+feat: Add FastAPI backend with ONNX Runtime for Vietnamese Address NER
+
+- Implement FastAPI REST API with health check, predict, and extract endpoints
+- Add ONNX Runtime inference for NER model
+- Support label entities: STREET, WARD, DISTRICT, PROVINCE
+- Add tokenizer integration with BERT model
+- Implement proper subword token handling (##)
+- Add Docker support with multi-stage build
+- Add GitHub Actions workflow for CI/CD to GHCR
+- Add model download script from Google Drive
+- Add comprehensive documentation and test scripts
+- Fix imports and label mapping from config.json
+
+Co-authored-by: GitHub Copilot <noreply@github.com>

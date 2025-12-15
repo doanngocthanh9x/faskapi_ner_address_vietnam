@@ -5,7 +5,7 @@ services:
     build: .
     container_name: ner-address-vietnam
     ports:
-      - "8000:8000"
+      - "5000:8000"
     volumes:
       - ./models:/app/models
       - ./faskapi:/app/faskapi
