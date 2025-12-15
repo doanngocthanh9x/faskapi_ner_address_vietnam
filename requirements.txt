@@ -1,9 +1,9 @@
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 onnxruntime==1.19.2
-transformers==4.36.2
+transformers==4.53.0
 numpy==1.26.4
 pydantic==2.5.3
-python-multipart==0.0.6
+python-multipart==0.0.18
 gdown==5.1.0
-requests==2.31.0
+requests==2.32.4
